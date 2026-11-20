@@ -7,7 +7,7 @@
 <meta name="theme-color" content="#0b3a20">
 <title>OIGC-BF</title>
 <link rel="icon" href="/oigc-bf-demo/icon.png" type="image/png">
-<link rel="preload" href="/oigc-bf-demo/presentation.js?v=mwpdefhr" as="script">
+<link rel="preload" href="/oigc-bf-demo/presentation.js?v=b1c9c655af" as="script">
 <link rel="preload" href="/oigc-bf-demo/_next/static/chunks/0x6ywmmlzlglp.css" as="style">
 <link rel="preload" href="/oigc-bf-demo/_next/static/chunks/0cxjeppk4o36x.js" as="script">
 <link rel="preload" href="/oigc-bf-demo/_next/static/chunks/41z-uud0w0iwe.js" as="script">
@@ -30,6 +30,7 @@
   var BASE = "/oigc-bf-demo";
   var CLE = "oigc-presentation-compte";
   var SLUGS = ["visiteur","membre","cabinet","candidat","tresorier","tresorier-adjoint","sg","conseil1","conseil2","president","vice-president","admin"];
+  var VERSIONS = {"visiteur":"5f7b994268","membre":"a0deb0de7f","cabinet":"6f6a71f10d","candidat":"8d300053c0","tresorier":"cfe1ad5962","tresorier-adjoint":"02a5148efd","sg":"dd486781b3","conseil1":"bcea98b20e","conseil2":"b0bc8479f4","president":"8de865fac6","vice-president":"88215bf470","admin":"5326f181f1"}; // empreinte du manifeste de chaque compte
 
     /* ---------- Fonctions communes à l'amorce et au service worker (insérées à l'export) ---------- */
 
@@ -101,7 +102,7 @@
   var k = cle(cheminDe(location.pathname), location.search);
   var horsCopie = false;
   // Adresses versionnées : le cache du navigateur peut les resservir sans vérification
-  fetch(BASE + "/_s/" + compte + ".json?v=mwpdefhr")
+  fetch(BASE + "/_s/" + compte + ".json?v=" + VERSIONS[compte])
     .then(function (r) {
       if (!r.ok) throw new Error("manifeste");
       return r.json();

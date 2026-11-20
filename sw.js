@@ -2,16 +2,17 @@
  * Service worker de la copie de présentation (GitHub Pages).
  * Après la première visite, il garde le site dans le navigateur et sert chaque page directement :
  * plus d'aller-retour vers GitHub pour l'amorce, le manifeste, les scripts ni les polices.
- * Chaque export a sa version : les caches d'un export précédent sont supprimés à l'activation.
+ * Les caches portent l'empreinte de leur contenu : ceux d'un export différent sont supprimés à l'activation.
  */
 "use strict";
 var BASE = "/oigc-bf-demo";
-var VERSION = "mwpdefhr";
 var SLUGS = ["visiteur","membre","cabinet","candidat","tresorier","tresorier-adjoint","sg","conseil1","conseil2","president","vice-president","admin"];
+var VERSIONS = {"visiteur":"5f7b994268","membre":"a0deb0de7f","cabinet":"6f6a71f10d","candidat":"8d300053c0","tresorier":"cfe1ad5962","tresorier-adjoint":"02a5148efd","sg":"dd486781b3","conseil1":"bcea98b20e","conseil2":"b0bc8479f4","president":"8de865fac6","vice-president":"88215bf470","admin":"5326f181f1"}; // empreinte du manifeste de chaque compte
 // Fichiers communs à presque toutes les pages, mis en cache dès l'installation
-var SOCLE = ["/oigc-bf-demo/presentation.js?v=mwpdefhr","/oigc-bf-demo/img/logo-oigc.webp","/oigc-bf-demo/_next/static/chunks/0x6ywmmlzlglp.css","/oigc-bf-demo/_next/static/chunks/0cxjeppk4o36x.js","/oigc-bf-demo/_next/static/chunks/41z-uud0w0iwe.js","/oigc-bf-demo/_next/static/chunks/0b379hzk4i_kp.js","/oigc-bf-demo/_next/static/chunks/turbopack-32x5vavz3fulw.js","/oigc-bf-demo/_next/static/chunks/0pofdtfgpmv8x.js","/oigc-bf-demo/_next/static/chunks/3me1pl5boje9x.js","/oigc-bf-demo/_next/static/chunks/0rga0fqct6ehd.js"];
-var STATIQUE = "oigc-statique-" + VERSION;
-var PAGES = "oigc-pages-" + VERSION;
+var SOCLE = ["/oigc-bf-demo/presentation.js?v=b1c9c655af","/oigc-bf-demo/img/logo-oigc.webp","/oigc-bf-demo/_next/static/chunks/0x6ywmmlzlglp.css","/oigc-bf-demo/_next/static/chunks/0cxjeppk4o36x.js","/oigc-bf-demo/_next/static/chunks/41z-uud0w0iwe.js","/oigc-bf-demo/_next/static/chunks/0b379hzk4i_kp.js","/oigc-bf-demo/_next/static/chunks/turbopack-32x5vavz3fulw.js","/oigc-bf-demo/_next/static/chunks/0pofdtfgpmv8x.js","/oigc-bf-demo/_next/static/chunks/3me1pl5boje9x.js","/oigc-bf-demo/_next/static/chunks/0rga0fqct6ehd.js"];
+// Noms tirés du contenu : un nouvel export identique garde les caches existants
+var STATIQUE = "oigc-statique-d418883478";
+var PAGES = "oigc-pages-8b1dbb6698";
 var ETAT = "oigc-etat";
 
   /* ---------- Fonctions communes à l'amorce et au service worker (insérées à l'export) ---------- */
@@ -97,6 +98,18 @@ self.addEventListener("activate", function (e) {
             .map(function (n) { return caches.delete(n); }),
         );
       })
+      .then(function () {
+        // Anciennes versions de presentation.js gardées dans le cache des fichiers communs
+        return caches.open(STATIQUE).then(function (c) {
+          return c.keys().then(function (reqs) {
+            return Promise.all(
+              reqs
+                .filter(function (r) { return r.url.indexOf("/presentation.js?v=") > 0 && r.url.indexOf(SOCLE[0]) < 0; })
+                .map(function (r) { return c.delete(r); }),
+            );
+          });
+        });
+      })
       .then(function () { return self.clients.claim(); }),
   );
 });
@@ -126,7 +139,7 @@ function compteCourant() {
 var manifestes = {};
 function manifeste(compte) {
   if (!manifestes[compte]) {
-    manifestes[compte] = depuisCache(PAGES, BASE + "/_s/" + compte + ".json?v=" + VERSION)
+    manifestes[compte] = depuisCache(PAGES, BASE + "/_s/" + compte + ".json?v=" + VERSIONS[compte])
       .then(function (r) {
         if (!r.ok) throw new Error("manifeste");
         return r.json();

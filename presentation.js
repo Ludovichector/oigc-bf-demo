@@ -78,7 +78,7 @@
     /* ---------- Annuaire public ---------- */
     var donnees = null;
     var charger = function () {
-      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpdefhr").then(function (r) { return r.json(); }));
+      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=3676b4cbbb").then(function (r) { return r.json(); }));
     };
     var sansAccent = function (s) {
       return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -281,14 +281,73 @@
     else f();
   }
   // Photo de fond mise de côté à l'export (voir exporter.mjs) : posée quand elle devient utile
+  // Largeur demandée aux banques d'images : celle de l'écran (1 600 px seulement sur grand écran)
+  var largeur = [640, 960, 1280, 1600].filter(function (l) {
+    return l >= Math.min(window.innerWidth || 1280, 1600) * Math.min(window.devicePixelRatio || 1, 2);
+  })[0] || 1600;
   function poserFond(el) {
     var u = el && el.getAttribute("data-oigc-fond");
     if (!u) return;
     el.removeAttribute("data-oigc-fond");
-    el.style.backgroundImage = 'url("' + u + '")';
+    el.style.backgroundImage = 'url("' + u.replace(/([?&](?:width|w)=)1600\b/, "$1" + largeur) + '")';
   }
+
+  /* ---------- Chiffres clés : décompte en CSS dès qu'ils paraissent, sans attendre le JavaScript du site ---------- */
+  // Le texte du compteur (« 0 » jusqu'au démarrage du site) est masqué et remplacé par un compteur CSS animé ;
+  // le décompte du site, qui arrive ensuite, aboutit à la même valeur sous ce masque.
+  var compteursCss = false;
+  try {
+    if (window.CSS && CSS.registerProperty) {
+      CSS.registerProperty({ name: "--oigc-n", syntax: "<integer>", inherits: false, initialValue: "0" });
+      compteursCss = true;
+    }
+  } catch (e) {
+    compteursCss = /already|registered/i.test(String(e && e.message));
+  }
+  function preparerCompteurs() {
+    if (!compteursCss) return [];
+    var style = document.createElement("style");
+    style.textContent =
+      ".oigc-cpt{font-size:0!important;counter-reset:oigc var(--oigc-n)}" +
+      ".oigc-cpt::after{content:counter(oigc);font-size:var(--oigc-taille)}" +
+      ".oigc-cpt.oigc-go{animation:oigc-compte 1.4s cubic-bezier(.25,1,.5,1) forwards}" +
+      "@keyframes oigc-compte{from{--oigc-n:0}to{--oigc-n:var(--oigc-cible)}}" +
+      "@media (prefers-reduced-motion:reduce){.oigc-cpt.oigc-go{animation:none;--oigc-n:var(--oigc-cible)}}";
+    document.head.appendChild(style);
+    var liste = [];
+    document.querySelectorAll(".compteur[aria-label]").forEach(function (el) {
+      var cible = el.getAttribute("aria-label");
+      // Nombres entiers sans séparateur ni unité : les seuls qu'un compteur CSS sait écrire
+      if (!/^\d{1,4}$/.test(cible) || el.textContent.trim() !== "0") return;
+      el.style.setProperty("--oigc-taille", getComputedStyle(el).fontSize);
+      el.style.setProperty("--oigc-cible", cible);
+      el.classList.add("oigc-cpt");
+      liste.push(el);
+    });
+    return liste;
+  }
+
   quandPret(function () {
     var io = "IntersectionObserver" in window;
+    // Vue du diaporama affichée d'emblée : sa photo part tout de suite
+    document.querySelectorAll("[data-oigc-tot]").forEach(poserFond);
+    var compteurs = preparerCompteurs();
+    if (compteurs.length) {
+      var lance = io
+        ? new IntersectionObserver(
+            function (es) {
+              es.forEach(function (e) {
+                if (e.isIntersecting) {
+                  e.target.classList.add("oigc-go");
+                  lance.unobserve(e.target);
+                }
+              });
+            },
+            { threshold: 0.3 },
+          )
+        : null;
+      compteurs.forEach(function (el) { if (lance) lance.observe(el); else el.classList.add("oigc-go"); });
+    }
     // Blocs qui apparaissent au défilement : même règle que le site, déclenchée dès l'affichage
     var blocs = document.querySelectorAll("[data-reveal]:not(.is-in)");
     var revele = io
