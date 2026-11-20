@@ -41,6 +41,7 @@
 
     /* ---------- Requêtes ---------- */
     var envoyer = window.fetch.bind(window);
+    window.__oigcEnvoyer = envoyer;
     var reponse = function (corps, statut) {
       return new Response(JSON.stringify(corps), { status: statut || 200, headers: { "content-type": "application/json" } });
     };
@@ -77,7 +78,7 @@
     /* ---------- Annuaire public ---------- */
     var donnees = null;
     var charger = function () {
-      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwoqkrx7").then(function (r) { return r.json(); }));
+      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpd2ug4").then(function (r) { return r.json(); }));
     };
     var sansAccent = function (s) {
       return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -189,7 +190,7 @@
         return flash(form, "Ce navigateur bloque l’enregistrement local : la connexion est impossible en navigation privée stricte.");
       }
       var interne = /^\/(?!\/)/.test(retour) ? retour : c.accueil;
-      location.href = BASE + interne;
+      memoriserCompte(c.slug).then(function () { location.href = BASE + interne; });
     });
   }
 
@@ -197,7 +198,18 @@
     try {
       localStorage.removeItem(CLE);
     } catch (e) {}
-    location.href = BASE + "/connexion?ok=" + encodeURIComponent("Vous êtes déconnecté.");
+    memoriserCompte("visiteur").then(function () {
+      location.href = BASE + "/connexion?ok=" + encodeURIComponent("Vous êtes déconnecté.");
+    });
+  }
+
+  // Le service worker ne lit pas le stockage local : le compte lui est transmis par le cache partagé
+  function memoriserCompte(slug) {
+    if (!window.caches) return Promise.resolve();
+    return caches
+      .open("oigc-etat")
+      .then(function (c) { return c.put(BASE + "/__compte", new Response(slug || "visiteur")); })
+      .catch(function () {});
   }
 
   /* ---------- Formulaires ---------- */
@@ -247,6 +259,101 @@
       setTimeout(filtrer, 1500);
     });
   }
+
+  /* ---------- Affichage sans attendre le JavaScript du site ---------- */
+  function quandPret(f) {
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", f);
+    else f();
+  }
+  // Photo de fond mise de côté à l'export (voir exporter.mjs) : posée quand elle devient utile
+  function poserFond(el) {
+    var u = el && el.getAttribute("data-oigc-fond");
+    if (!u) return;
+    el.removeAttribute("data-oigc-fond");
+    el.style.backgroundImage = 'url("' + u + '")';
+  }
+  quandPret(function () {
+    var io = "IntersectionObserver" in window;
+    // Blocs qui apparaissent au défilement : même règle que le site, déclenchée dès l'affichage
+    var blocs = document.querySelectorAll("[data-reveal]:not(.is-in)");
+    var revele = io
+      ? new IntersectionObserver(
+          function (es) {
+            es.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add("is-in");
+                revele.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: "0px 0px -7% 0px", threshold: 0.08 },
+        )
+      : null;
+    blocs.forEach(function (el) { if (revele) revele.observe(el); else el.classList.add("is-in"); });
+
+    // Photos de fond des sections : chargées à l'approche de l'écran
+    var fonds = io
+      ? new IntersectionObserver(
+          function (es) {
+            es.forEach(function (e) {
+              if (e.isIntersecting) {
+                poserFond(e.target);
+                fonds.unobserve(e.target);
+              }
+            });
+          },
+          { rootMargin: "500px 0px" },
+        )
+      : null;
+    document.querySelectorAll("[data-oigc-fond]:not(.diapo-vue)").forEach(function (el) { if (fonds) fonds.observe(el); else poserFond(el); });
+
+    // Diaporama : seule la photo affichée est chargée d'emblée, la suivante est préparée à chaque changement
+    var vues = Array.prototype.slice.call(document.querySelectorAll(".diapo .diapo-vue"));
+    if (vues.length) {
+      var preparer = function () {
+        var actif = vues.findIndex(function (v) { return /(^|\s)is-active(\s|$)/.test(v.className); });
+        if (actif < 0) actif = 0;
+        poserFond(vues[actif]);
+        poserFond(vues[(actif + 1) % vues.length]);
+        vues.forEach(function (v) { if (/is-leaving/.test(v.className)) poserFond(v); });
+      };
+      new MutationObserver(preparer).observe(vues[0].parentNode, { attributes: true, subtree: true, attributeFilter: ["class"] });
+      window.addEventListener("load", function () { setTimeout(preparer, 800); });
+    }
+  });
+
+  /* ---------- Service worker : le site reste dans le navigateur après la première visite ---------- */
+  var envoyerBrut = window.__oigcEnvoyer || window.fetch.bind(window);
+  try {
+    memoriserCompte(localStorage.getItem(CLE) || "visiteur");
+  } catch (e) {
+    memoriserCompte("visiteur");
+  }
+  if ("serviceWorker" in navigator && window.caches) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register(BASE + "/sw.js", { scope: BASE + "/" }).catch(function () {});
+    });
+  }
+  // Page visée par un lien survolé ou touché : demandée d'avance au service worker
+  var demandees = {};
+  function precharger(cible) {
+    var a = cible && cible.closest ? cible.closest("a[href]") : null;
+    if (!a || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+    var u;
+    try {
+      u = new URL(a.href, location.href);
+    } catch (e) {
+      return;
+    }
+    if (u.origin !== location.origin || u.pathname.indexOf(BASE + "/") !== 0 && u.pathname !== BASE) return;
+    if (/\.[a-z0-9]{1,8}$/i.test(u.pathname) || /\/(api|_next|_s|_f|_data)\//.test(u.pathname)) return;
+    var k = u.pathname + u.search;
+    if (demandees[k] || k === location.pathname + location.search) return;
+    demandees[k] = true;
+    envoyerBrut(u.pathname + u.search, { headers: { "x-oigc-prechargement": "1" } }).catch(function () {});
+  }
+  document.addEventListener("pointerover", function (e) { precharger(e.target); }, { capture: true, passive: true });
+  document.addEventListener("touchstart", function (e) { precharger(e.target); }, { capture: true, passive: true });
 
   // Ancre de l'adresse : la page est écrite après le chargement, on y descend une fois affichée
   if (location.hash.length > 1) {
