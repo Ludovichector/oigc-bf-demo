@@ -78,7 +78,7 @@
     /* ---------- Annuaire public ---------- */
     var donnees = null;
     var charger = function () {
-      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpd9kjr").then(function (r) { return r.json(); }));
+      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpdefhr").then(function (r) { return r.json(); }));
     };
     var sansAccent = function (s) {
       return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -369,6 +369,18 @@
   }
   document.addEventListener("pointerover", function (e) { precharger(e.target); }, { capture: true, passive: true });
   document.addEventListener("touchstart", function (e) { precharger(e.target); }, { capture: true, passive: true });
+  // Pages des menus (en-tête, menu de l'espace) : demandées une à une en arrière-plan, pour s'ouvrir sans attente
+  apresChargement(function () {
+    setTimeout(function () {
+      var liens = Array.prototype.slice.call(document.querySelectorAll("header a[href], aside a[href], .space-nav a[href], .barre-mobile a[href]"), 0, 40);
+      var suivant = function () {
+        if (!liens.length || !navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+        precharger(liens.shift());
+        setTimeout(suivant, 150);
+      };
+      suivant();
+    }, 1500);
+  }, 5000);
 
   // Ancre de l'adresse : la page est écrite après le chargement, on y descend une fois affichée
   if (location.hash.length > 1) {
