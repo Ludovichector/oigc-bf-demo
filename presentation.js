@@ -78,7 +78,7 @@
     /* ---------- Annuaire public ---------- */
     var donnees = null;
     var charger = function () {
-      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpd2ug4").then(function (r) { return r.json(); }));
+      return donnees || (donnees = envoyer(BASE + "/_data/annuaire.json?v=mwpd9kjr").then(function (r) { return r.json(); }));
     };
     var sansAccent = function (s) {
       return String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -134,6 +134,21 @@
         };
       });
     };
+  }
+
+  // Après le chargement complet. La page écrite par l'amorce ne reçoit pas toujours l'événement « load » :
+  // on surveille aussi l'état du document, avec un délai de secours
+  function apresChargement(f, secours) {
+    var fait = false;
+    var lancer = function () {
+      if (fait) return;
+      fait = true;
+      f();
+    };
+    if (document.readyState === "complete") setTimeout(lancer, 0);
+    window.addEventListener("load", lancer);
+    document.addEventListener("readystatechange", function () { if (document.readyState === "complete") lancer(); });
+    setTimeout(lancer, secours || 4000);
   }
 
   /* ---------- Message affiché à la place d'un envoi ---------- */
@@ -254,7 +269,7 @@
         l.style.display = normaliser(l.textContent).indexOf(mot) >= 0 ? "" : "none";
       });
     };
-    window.addEventListener("load", function () {
+    apresChargement(function () {
       setTimeout(filtrer, 250);
       setTimeout(filtrer, 1500);
     });
@@ -318,7 +333,7 @@
         vues.forEach(function (v) { if (/is-leaving/.test(v.className)) poserFond(v); });
       };
       new MutationObserver(preparer).observe(vues[0].parentNode, { attributes: true, subtree: true, attributeFilter: ["class"] });
-      window.addEventListener("load", function () { setTimeout(preparer, 800); });
+      apresChargement(function () { setTimeout(preparer, 800); }, 2500);
     }
   });
 
@@ -330,7 +345,7 @@
     memoriserCompte("visiteur");
   }
   if ("serviceWorker" in navigator && window.caches) {
-    window.addEventListener("load", function () {
+    apresChargement(function () {
       navigator.serviceWorker.register(BASE + "/sw.js", { scope: BASE + "/" }).catch(function () {});
     });
   }
@@ -357,7 +372,7 @@
 
   // Ancre de l'adresse : la page est écrite après le chargement, on y descend une fois affichée
   if (location.hash.length > 1) {
-    window.addEventListener("load", function () {
+    apresChargement(function () {
       try {
         var cible = document.getElementById(decodeURIComponent(location.hash.slice(1)));
         if (cible) cible.scrollIntoView();

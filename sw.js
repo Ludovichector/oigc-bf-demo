@@ -6,10 +6,10 @@
  */
 "use strict";
 var BASE = "/oigc-bf-demo";
-var VERSION = "mwpd2ug4";
+var VERSION = "mwpd9kjr";
 var SLUGS = ["visiteur","membre","cabinet","candidat","tresorier","tresorier-adjoint","sg","conseil1","conseil2","president","vice-president","admin"];
 // Fichiers communs à presque toutes les pages, mis en cache dès l'installation
-var SOCLE = ["/oigc-bf-demo/presentation.js?v=mwpd2ug4","/oigc-bf-demo/img/logo-oigc.webp","/oigc-bf-demo/_next/static/chunks/0x6ywmmlzlglp.css","/oigc-bf-demo/_next/static/chunks/0cxjeppk4o36x.js","/oigc-bf-demo/_next/static/chunks/41z-uud0w0iwe.js","/oigc-bf-demo/_next/static/chunks/0b379hzk4i_kp.js","/oigc-bf-demo/_next/static/chunks/turbopack-32x5vavz3fulw.js","/oigc-bf-demo/_next/static/chunks/0pofdtfgpmv8x.js","/oigc-bf-demo/_next/static/chunks/3me1pl5boje9x.js","/oigc-bf-demo/_next/static/chunks/0rga0fqct6ehd.js"];
+var SOCLE = ["/oigc-bf-demo/presentation.js?v=mwpd9kjr","/oigc-bf-demo/img/logo-oigc.webp","/oigc-bf-demo/_next/static/chunks/0x6ywmmlzlglp.css","/oigc-bf-demo/_next/static/chunks/0cxjeppk4o36x.js","/oigc-bf-demo/_next/static/chunks/41z-uud0w0iwe.js","/oigc-bf-demo/_next/static/chunks/0b379hzk4i_kp.js","/oigc-bf-demo/_next/static/chunks/turbopack-32x5vavz3fulw.js","/oigc-bf-demo/_next/static/chunks/0pofdtfgpmv8x.js","/oigc-bf-demo/_next/static/chunks/3me1pl5boje9x.js","/oigc-bf-demo/_next/static/chunks/0rga0fqct6ehd.js"];
 var STATIQUE = "oigc-statique-" + VERSION;
 var PAGES = "oigc-pages-" + VERSION;
 var ETAT = "oigc-etat";
